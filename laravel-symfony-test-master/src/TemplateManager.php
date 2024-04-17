@@ -31,49 +31,35 @@ class TemplateManager
 
     private function replaceQuoteVariables($text, array $data)
     {
-        $quote = $data['quote'] ?? null;
-
-        if (!$quote || !($quote instanceof Quote)) {
+        if (!isset($data['quote']) || !($data['quote'] instanceof Quote)) {
             return $text;
         }
 
-        $quoteRepository = QuoteRepository::getInstance();
-        $destinationRepository = DestinationRepository::getInstance();
-        $siteRepository = SiteRepository::getInstance();
-
-        $quoteId = $quote->id;
-        $quoteData = $quoteRepository->getById($quoteId);
-        $siteId = $quote->siteId;
-        $siteData = $siteRepository->getById($siteId);
-        $destinationId = $quote->destinationId;
-        $destinationData = $destinationRepository->getById($destinationId);
-
-        $destination = null;
+        $quote = $data['quote'];
+        $_quoteFromRepository = QuoteRepository::getInstance()->getById($quote->id);
+        $usefulObject = SiteRepository::getInstance()->getById($quote->siteId);
+        $destinationOfQuote = DestinationRepository::getInstance()->getById($quote->destinationId);
 
         if (strpos($text, '[quote:destination_link]') !== false) {
-            $destination = $destinationRepository->getById($destinationId);
+            $destination = DestinationRepository::getInstance()->getById($quote->destinationId);
         }
 
-        $containsSummaryHtml = strpos($text, '[quote:summary_html]');
-        $containsSummary = strpos($text, '[quote:summary]');
-
-        if ($containsSummaryHtml !== false || $containsSummary !== false) {
-            $summaryHtml = $containsSummaryHtml !== false ? Quote::renderHtml($quoteData) : null;
-            $summaryText = $containsSummary !== false ? Quote::renderText($quoteData) : null;
-
-            $text = str_replace('[quote:summary_html]', $summaryHtml, $text);
-            $text = str_replace('[quote:summary]', $summaryText, $text);
+        if (strpos($text, '[quote:summary_html]') !== false) {
+            $text = str_replace('[quote:summary_html]', Quote::renderHtml($_quoteFromRepository), $text);
         }
 
-        if ($destination) {
-            $destinationLink = $siteData->url . '/' . $destinationData->countryName . '/quote/' . $quoteData->id;
-            $text = str_replace('[quote:destination_link]', $destinationLink, $text);
+        if (strpos($text, '[quote:summary]') !== false) {
+            $text = str_replace('[quote:summary]', Quote::renderText($_quoteFromRepository), $text);
+        }
+
+        if (isset($destination)) {
+            $text = str_replace('[quote:destination_link]', $usefulObject->url . '/' . $destination->countryName . '/quote/' . $_quoteFromRepository->id, $text);
         } else {
             $text = str_replace('[quote:destination_link]', '', $text);
         }
 
         if (strpos($text, '[quote:destination_name]') !== false) {
-            $text = str_replace('[quote:destination_name]', $destinationData->countryName, $text);
+            $text = str_replace('[quote:destination_name]', $destinationOfQuote->countryName, $text);
         }
 
         return $text;
@@ -81,14 +67,15 @@ class TemplateManager
 
     private function replaceUserVariables($text, array $data)
     {
-        $user = $data['user'] ?? null;
-
-        if (!$user || !($user instanceof User)) {
+        if (!isset($data['user']) || !($data['user'] instanceof User)) {
             return $text;
         }
 
-        $firstName = ucfirst(mb_strtolower($user->firstname));
-        $text = str_replace('[user:first_name]', $firstName, $text);
+        $_user = $data['user'];
+
+        if (strpos($text, '[user:first_name]') !== false) {
+            $text = str_replace('[user:first_name]', ucfirst(mb_strtolower($_user->firstname)), $text);
+        }
 
         return $text;
     }
